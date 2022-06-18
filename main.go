@@ -43,7 +43,7 @@ func main() {
 		TargetEmail string `yaml:"targetEmail"`
 	}
 
-	if !withinFiveDeg && !isDarkOutside {
+	if withinFiveDeg && isDarkOutside {
 		f, err := os.Open("config.yml")
 		if err != nil {
 			log.Fatal(err)
