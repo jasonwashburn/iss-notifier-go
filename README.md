@@ -1,6 +1,6 @@
 # ISS Notifier (Now in Go!)
 
-A Go rewrite of a script I wrote when I was first learning Python. It uses the gmail smtp server to automatically notify you when the International Space Station is overhead (within 5 degrees latitude or longitude) and it's dark outside (between the ending and beginning of astrological
+A Go rewrite of a [script](https://github.com/jasonwashburn/ISSNotifier) I wrote when I was first learning Python. It uses the gmail smtp server to automatically notify you when the International Space Station is overhead (within 5 degrees latitude or longitude) and it's dark outside (between the ending and beginning of astrological
 twilight)
 
 **Uses**:

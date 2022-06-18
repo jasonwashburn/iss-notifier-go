@@ -29,6 +29,8 @@ type Position struct {
 	Longitude string
 }
 
+// A script that can be run repeatedly via something like cron to automatically
+// send you an email if the ISS is currently overhead and it's dark outside
 func main() {
 	var withinFiveDeg bool = issWithinFiveDeg(MY_LAT, MY_LONG)
 	log.Println("Within Five Degrees:", withinFiveDeg)
@@ -99,6 +101,8 @@ func issWithinFiveDeg(lat float64, lon float64) bool {
 	}
 }
 
+// Retrieves the current UTC astronomical twilight beginning and end times, then compares
+// it to the current time in UTC to see if it's dark outside
 func isDark(lat float64, lon float64) bool {
 	params := url.Values{}
 	params.Add("lat", strconv.FormatFloat(lat, 'G', -1, 32))
@@ -151,6 +155,7 @@ func isDark(lat float64, lon float64) bool {
 	}
 }
 
+// Sends an email using the gmail smtp server
 func sendEmail(toAddress string, message string, fromAddress string, password string) {
 	log.Println("Sending email...")
 	recipients := []string{toAddress}
