@@ -2,14 +2,17 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
+	"net/smtp"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 const MY_LAT = 41.151058
@@ -22,20 +25,44 @@ type ISSResponse struct {
 }
 
 type Position struct {
-	Latitude  float64
-	Longitude float64
+	Latitude  string
+	Longitude string
 }
 
 func main() {
 	var withinFiveDeg bool = issWithinFiveDeg(MY_LAT, MY_LONG)
-	fmt.Println("Within Five Degrees:", withinFiveDeg)
+	log.Println("Within Five Degrees:", withinFiveDeg)
 	var isDarkOutside bool = isDark(MY_LAT, MY_LONG)
-	fmt.Println("Is dark outside:", isDarkOutside)
+	log.Println("Is dark outside:", isDarkOutside)
+
+	type Config struct {
+		FromEmail   string `yaml:"fromEmail"`
+		Password    string `yaml:"password"`
+		TargetEmail string `yaml:"targetEmail"`
+	}
+
+	if withinFiveDeg && isDarkOutside {
+		f, err := os.Open("config.yml")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+
+		var cfg Config
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(&cfg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Print(cfg)
+		sendEmail(cfg.TargetEmail, "Look Up", cfg.FromEmail, cfg.Password)
+	}
 }
 
 // Gets current position of the ISS and determines if it's position is
 // within 5 degrees of the supplied location
 func issWithinFiveDeg(lat float64, lon float64) bool {
+	log.Println("Retrieving ISS position...")
 	resp, err := http.Get("http://api.open-notify.org/iss-now.json")
 	if err != nil {
 		log.Fatalln(err)
@@ -45,12 +72,19 @@ func issWithinFiveDeg(lat float64, lon float64) bool {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
 	var issResponse ISSResponse
 	json.Unmarshal(responseData, &issResponse)
-
-	var latDiff = math.Abs(issResponse.ISSPosition.Latitude - lat)
-	var longDiff = math.Abs(issResponse.ISSPosition.Longitude - lon)
+	log.Println("API Response:", string(responseData))
+	issLatitude, err := strconv.ParseFloat(issResponse.ISSPosition.Latitude, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+	issLongitude, err := strconv.ParseFloat(issResponse.ISSPosition.Longitude, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var latDiff = math.Abs(issLatitude - lat)
+	var longDiff = math.Abs(issLongitude - lon)
 	if latDiff <= 5 && longDiff <= 5 {
 		return true
 	} else {
@@ -90,7 +124,6 @@ func isDark(lat float64, lon float64) bool {
 		log.Fatalln(err)
 	}
 
-
 	var ssResponse SunriseSunsetResponse
 	json.Unmarshal(responseData, &ssResponse)
 	dateFormat := "2006-01-02T15:04:05-07:00"
@@ -109,4 +142,21 @@ func isDark(lat float64, lon float64) bool {
 	} else {
 		return false
 	}
+}
+
+func sendEmail(toAddress string, message string, fromAddress string, password string) {
+	log.Println("Sending email...")
+	recipients := []string{toAddress}
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
+
+	byteMessage := []byte(message)
+
+	auth := smtp.PlainAuth("", fromAddress, password, smtpHost)
+
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, fromAddress, recipients, byteMessage)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Success!")
 }
